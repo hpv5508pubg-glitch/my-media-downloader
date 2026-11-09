@@ -1,0 +1,79 @@
+# ==============================================================================
+# CURSOR RULES: Private Multi-Platform Media Downloader & Offline Music Player
+# Archetype: MP3 Downloader+ & Music Player (Google Play Standard)
+# Architecture: Flutter 3.x (Android) + Hugging Face Spaces (FastAPI + yt-dlp + FFmpeg)
+# Severity: BALANCED (Clean, Production-Ready, Zero-Blindspots)
+# Version: 4.1.0
+# ==============================================================================
+
+## 1. TECH STACK & SYSTEM ARCHITECTURE
+- **Mobile Client (`mobile/`)**: Flutter 3.x (Dart 3.x)
+  - State Management: `flutter_riverpod` (v2.x)
+  - Storage & Database: `isar` / `isar_flutter_libs` (hoặc `isar_community` tương thích AGP 8+)
+  - File Persistence: `media_store_plus` (Scoped Storage cho Android 10-14+ lưu vào `/Music`)
+  - HTTP & Networking: `dio` (Timeout 60s, Auto-retry 5 lần, CancelToken)
+  - Audio Engine: `just_audio` + `audio_service` (chạy nền, Audio Focus)
+  - Equalizer: `equalizer_flutter` (5-band EQ + Bass Boost)
+  - Screen & CPU Keep-Alive: `wakelock_plus` (bật khi tải, tắt khi hàng đợi rỗng)
+  - Image Cache & Memory: `cached_network_image` (memCacheWidth: 150, memCacheHeight: 150)
+  - System Tags & ID3: `audiotags` (đọc/ghi metadata ID3v2 + Album Cover Art)
+  - Notifications: `flutter_local_notifications`
+- **Backend Service (`backend/`)**: Python 3.11+, FastAPI (Dockerized trên Hugging Face Spaces 2 vCPU / 16GB RAM)
+  - Core Downloader: `yt-dlp` (bản mới nhất, tự động update khi 403)
+  - Transcoding & Audio Filter: `FFmpeg` (Center Crop 1:1 ảnh bìa, Stream Copy 2s cho MP4 1080p)
+  - Process Registry: `active_processes: dict[str, asyncio.subprocess.Process] = {}`
+  - Auth Secret: Header `X-API-Key` đọc từ `os.getenv("API_KEY", "Haphuocvinhdz25082009@")`
+
+---
+
+## 2. QUY CHUẨN BACKEND (FastAPI + Hugging Face Spaces)
+1. **Phân biệt rõ Cơ chế Thực thi Subprocess vs Thread**:
+   - **Với `/api/extract` (Chạy nhanh 1-2s)**: Dùng `asyncio.to_thread` gọi thư viện Python `yt_dlp.YoutubeDL` để bóc tách thông tin metadata không gây block event loop.
+   - **Với `/api/download-job` (Chạy lâu, cần đo progress và cần nút Cancel)**: BẮT BUỘC dùng `asyncio.create_subprocess_exec` gọi CLI `yt-dlp` và `ffmpeg`. Lưu thực thể `Process` vào dictionary `active_processes[job_id]`.
+2. **Hủy tác vụ đồng bộ (`DELETE /api/job/{job_id}`)**:
+   - Khi nhận lệnh DELETE: Tìm `job_id` trong `active_processes`, gọi `process.terminate()` (hoặc `process.kill()`), xóa thư mục tạm `/tmp/{video_id}_{job_id}/`, và trả về `{"status": "cancelled"}` ngay lập tức để giải phóng 100% tài nguyên CPU/RAM.
+3. **Chống 504 Timeout**:
+   - `POST /api/download-job` trả về `{"job_id": "uuid", "status": "processing"}` tức thì trong 0.1s.
+   - Client polling `GET /api/job-status/{job_id}` lấy `% tiến trình` (`downloading` / `converting`).
+   - Client CHỈ gọi `GET /api/stream/{job_id}` khi `status == "completed"`.
+4. **Tối ưu FFmpeg**:
+   - MP3 320k: Cắt ảnh bìa vuông 1:1 trước khi nhúng: `-vf "crop='min(iw,ih)':'min(iw,ih)'"`.
+   - MP4 1080p: Ưu tiên AVC1 + M4A ghép luồng Stream Copy siêu tốc 2s: `-c:v copy -c:a copy -movflags +faststart`.
+5. **Cookies chống Bot**:
+   - Endpoint `POST /api/admin/cookies` nhận chuỗi Netscape cookies ghi vào `/tmp/cookies.txt`.
+   - `yt-dlp` tự động nhận cờ `--cookies /tmp/cookies.txt` nếu file tồn tại.
+
+---
+
+## 3. QUY CHUẨN MOBILE CLIENT (Flutter Android)
+1. **Scoped Storage Android 10-14+**:
+   - Khai báo đầy đủ trong `AndroidManifest.xml`: `READ_MEDIA_AUDIO`, `READ_MEDIA_VIDEO`, `POST_NOTIFICATIONS`, `WAKE_LOCK`, `INTERNET`.
+   - BẮT BUỘC sử dụng `media_store_plus` để chèn file vào `MediaStore.Audio.Media.EXTERNAL_CONTENT_URI` (`/storage/emulated/0/Music/`). Tuyệt đối không dùng đường dẫn cứng `File('/storage/emulated/0/Music/...')`.
+2. **Khởi tạo Equalizer an toàn**:
+   - Lắng nghe `player.androidAudioSessionIdStream` từ `just_audio` và chỉ gọi `Equalizer.init(sessionId)` khi `sessionId != null && sessionId > 0`.
+3. **Wakelock & Download Queue**:
+   - Tích hợp `wakelock_plus`: Bật khi hàng đợi có bài đang tải, tắt ngay khi hàng đợi rỗng.
+   - Hủy tác vụ 2 chiều: Nút Hủy vừa cancel `DioCancelToken` vừa gọi `DELETE /api/job/{job_id}` lên Server.
+   - Hàng đợi giới hạn 3 tasks song song, nút "Ưu tiên tải ngay" đẩy bài lên đầu, lưu bền vững Isar DB.
+   - Moving Average 5s tính tốc độ MB/s và ETA không giật số.
+4. **Nhận diện bài đã tải**:
+   - Lưu `videoId` vào Isar DB. Khi hiển thị kết quả `/api/extract`, đối chiếu `videoId` để hiện nhãn xanh **[Đã có trong máy]** và uncheck mặc định khi tải Playlist.
+5. **Giao diện & Cài đặt**:
+   - Dark Mode AMOLED + Xanh Neon Spotify. Mini Player đáy màn hình + Full Player đĩa than xoay tròn. Sleep Timer (fade-out 5s).
+   - Màn hình Settings cho phép đổi Server URL, API Key và ô dán YouTube Cookies đồng bộ lên server.
+   - Debug Logger bí mật: Chạm 5 lần Logo app để xem log lỗi.
+
+---
+
+## 4. QUY TẮC KỶ LUẬT VIẾT CODE (CODING DISCIPLINE)
+1. **Tuyệt đối KHÔNG viết mã giữ chỗ (No Placeholders)**:
+   - Nghiêm cấm dùng `// TODO`, `// Implement later`, `/* logic goes here */` hoặc `pass` trong Python. Mọi hàm, method, controller khi tạo ra BẮT BUỘC phải có logic hoạt động đầy đủ 100%.
+2. **Quy chuẩn Serialization & Hợp đồng dữ liệu**:
+   - Backend (FastAPI / Pydantic) bắt buộc trả về JSON key dạng `snake_case`.
+   - Phía Flutter (models/): Bắt buộc dùng `@JsonKey(name: 'tên_snake_case')` map chính xác sang biến `camelCase` của Dart. Tuyệt đối không tự ý đổi tên trường.
+3. **An toàn Bất đồng bộ & Quản lý State trên Flutter**:
+   - Sau mọi lệnh `await` (gọi API, đọc file, đọc DB), BẮT BUỘC phải kiểm tra:
+     `if (!mounted) return;` (trong StatefulWidget) hoặc `if (!ref.mounted) return;` (trong Riverpod) trước khi gọi `setState`, `ref.read`, `showDialog`, hoặc `ScaffoldMessenger`.
+4. **Ràng buộc tương thích Android Gradle Plugin 8+ (AGP 8+)**:
+   - Trong `android/app/build.gradle`, bắt buộc khai báo `namespace "com.example.app"` và `minSdkVersion 21`.
+   - Nếu gặp lỗi generator của `isar`, cho phép dùng `isar_community` hoặc `hive_ce` thay thế để đảm bảo tương thích 100% với Flutter 3.x và AGP 8+.

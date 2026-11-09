@@ -1,0 +1,26 @@
+# AI Project Rules Generator Configuration
+project_name: "Private-Media-Downloader-Player"
+version: "1.0.0"
+
+target_platforms:
+  - antigravity
+  - cursor
+  - codex
+  - claude-code
+
+severity_level: balanced
+output_language: vi
+template_style: progressive
+
+quality_threshold: 45
+confidence_threshold: 95
+skill_match_limit: 5
+
+project_profile:
+  client_framework: "flutter"
+  backend_framework: "fastapi"
+  hosting: "huggingface-spaces"
+  audio_player: "just_audio"
+  storage_target: "public_music_dir"
+  auth_header: "X-API-Key"
+  api_secret: "Haphuocvinhdz25082009@"

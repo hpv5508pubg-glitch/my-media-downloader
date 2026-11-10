@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch: # Cho phép bấm nút "Run workflow" thủ công trên web GitHub bất cứ lúc nào
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,6 +28,12 @@ jobs:
         with:
           channel: 'stable'
           cache: true
+
+      - name: 🛠️ Generate Gradle Wrapper Executables
+        working-directory: mobile/android
+        run: |
+          gradle wrapper --gradle-version 8.4
+          chmod +x gradlew
 
       - name: 📦 Install Flutter Dependencies
         working-directory: mobile

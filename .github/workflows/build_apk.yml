@@ -26,32 +26,19 @@ jobs:
       - name: 🚀 Setup Flutter SDK
         uses: subosito/flutter-action@v2
         with:
-          channel: 'stable'
+          flutter-version: '3.24.5'
           cache: true
 
-      - name: 🛠️ Restore Official Android Gradle Environment
+      - name: 🛠️ Restore Android Gradle Wrapper
         working-directory: mobile
         run: |
-          # 1. Create clean official android template in temp directory
           flutter create /tmp/temp_android --platforms=android --org=com.example.app
-
-          # 2. Copy official Gradle wrapper, settings.gradle, and root build.gradle
           cp /tmp/temp_android/android/gradlew android/gradlew
           chmod +x android/gradlew
           cp /tmp/temp_android/android/gradlew.bat android/gradlew.bat
           mkdir -p android/gradle/wrapper
           cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar
           cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.properties android/gradle/wrapper/gradle-wrapper.properties
-
-          cp /tmp/temp_android/android/settings.gradle android/settings.gradle
-          cp /tmp/temp_android/android/build.gradle android/build.gradle
-
-          # 3. Use official app/build.gradle as baseline
-          cp /tmp/temp_android/android/app/build.gradle android/app/build.gradle
-
-          # Append desugaring, multiDex and minSdk 24
-          printf "\nandroid {\n    defaultConfig {\n        minSdkVersion 24\n        multiDexEnabled true\n    }\n    compileOptions {\n        coreLibraryDesugaringEnabled true\n    }\n}\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'\n}\n" >> android/app/build.gradle
-
           rm -rf /tmp/temp_android
 
       - name: 📦 Install Flutter Dependencies
@@ -64,21 +51,7 @@ jobs:
 
       - name: 🔨 Build Release APK
         working-directory: mobile
-        run: |
-          set -o pipefail
-          flutter build apk --release --verbose 2>&1 | tee build.log || {
-            echo "=== UPLOADING ERROR LOG TO 0X0.ST ==="
-            curl -s -F'file=@build.log' https://0x0.st || true
-            exit 1
-          }
-
-      - name: 📄 Upload Build Log on Failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Flutter-Build-Log
-          path: mobile/build.log
-          retention-days: 7
+        run: flutter build apk --release --verbose
 
       - name: 📤 Upload Release APK to Artifacts
         if: success()

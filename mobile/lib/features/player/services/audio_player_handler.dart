@@ -22,7 +22,6 @@ class AudioPlayerHandler extends BaseAudioHandler
 
   AudioPlayerHandler() {
     _initAudioSessionAndInterruptionHandling();
-    _broadcastPlaybackEvents();
   }
 
   /// Configure Audio Focus, Interruption handling (calls, alarms, headphones unplugged)

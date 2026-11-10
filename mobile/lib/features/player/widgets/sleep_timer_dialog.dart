@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../providers/sleep_timer_provider.dart';
+import '../services/sleep_timer_service.dart';
 
 class SleepTimerDialog extends ConsumerWidget {
   const SleepTimerDialog({super.key});

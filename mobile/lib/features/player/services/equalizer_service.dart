@@ -124,7 +124,8 @@ class EqualizerService {
   Future<void> setBassBoost(int level) async {
     if (!_isInitialized) return;
     try {
-      await EqualizerFlutter.setBassBoost(level.clamp(0, 1000));
+      // Adjust lowest frequency band (Bass)
+      await EqualizerFlutter.setBandLevel(0, ((level / 1000.0) * 10).round());
     } catch (exc) {
       debugPrint('Error setting bass boost: $exc');
     }

@@ -53,7 +53,7 @@ class _TagEditorScreenState extends State<TagEditorScreen> {
         try {
           final tag = Tag(
             title: newTitle,
-            artist: newArtist,
+            trackArtist: newArtist,
             album: newAlbum,
           );
           await AudioTags.write(widget.track.filePath, tag);

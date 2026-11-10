@@ -38,7 +38,7 @@ class FormatItem {
       quality: json['quality'] as String? ?? '',
       ext: json['ext'] as String? ?? 'mp3',
       filesizeMb: (json['filesize_mb'] as num?)?.toDouble() ?? 0.0,
-      needs_ffmpeg: json['needs_ffmpeg'] as bool? ?? false,
+      needsFfmpeg: json['needs_ffmpeg'] as bool? ?? false,
     );
   }
 

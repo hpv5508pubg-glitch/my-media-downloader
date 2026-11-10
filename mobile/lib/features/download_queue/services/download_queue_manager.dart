@@ -365,7 +365,7 @@ class DownloadQueueManager {
         // Fallback for non-Android environments / test emulators
         final appDir = await getApplicationDocumentsDirectory();
         final musicFallbackDir = Directory('${appDir.path}/Music');
-        await musicFallbackDir.create(parents: true);
+        await musicFallbackDir.create(recursive: true);
         final destinationFile = File('${musicFallbackDir.path}/$finalFileName');
         await tempFile.copy(destinationFile.path);
         finalSavedPath = destinationFile.path;

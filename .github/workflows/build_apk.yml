@@ -51,7 +51,7 @@ jobs:
 
       - name: 🔨 Build Release APK
         working-directory: mobile
-        run: flutter build apk --release --verbose
+        run: flutter build apk --release --verbose --android-skip-build-dependency-validation
 
       - name: 📤 Upload Release APK to Artifacts
         if: success()

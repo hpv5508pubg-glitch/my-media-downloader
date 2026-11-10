@@ -15,15 +15,15 @@ dependencies:
   flutter_riverpod: ^2.5.1
 
   # Local Database (AGP 8+ Compatible Isar Community Fork)
-  isar_community: 3.1.0+1
-  isar_flutter_libs: 3.1.0+1
+  isar_community: ^3.4.1
+  isar_community_flutter_libs: ^3.4.1
   path_provider: ^2.1.2
 
   # Networking & HTTP
   dio: ^5.4.3+1
 
   # Storage & Android Scoped Storage (/Music MediaStore)
-  media_store_plus: ^0.4.1
+  media_store_plus: ^0.1.3
 
   # ID3 Metadata & Album Art Editing
   audiotags: ^1.4.0
@@ -51,8 +51,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
-  build_runner: ^2.4.9
-  isar_community_generator: 3.1.0+1
+  build_runner: any
+  isar_community_generator: ^3.4.1
   json_serializable: ^6.8.0
 
 flutter:

@@ -55,6 +55,7 @@ class _TagEditorScreenState extends State<TagEditorScreen> {
             title: newTitle,
             trackArtist: newArtist,
             album: newAlbum,
+            pictures: const [],
           );
           await AudioTags.write(widget.track.filePath, tag);
         } catch (_) {

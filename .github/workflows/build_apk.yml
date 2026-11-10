@@ -52,20 +52,20 @@ jobs:
           # Append desugaring, multiDex and minSdk 24
           cat << 'EOF' >> android/app/build.gradle
 
-android {
-    defaultConfig {
-        minSdkVersion 24
-        multiDexEnabled true
-    }
-    compileOptions {
-        coreLibraryDesugaringEnabled true
-    }
-}
+          android {
+              defaultConfig {
+                  minSdkVersion 24
+                  multiDexEnabled true
+              }
+              compileOptions {
+                  coreLibraryDesugaringEnabled true
+              }
+          }
 
-dependencies {
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
-}
-EOF
+          dependencies {
+              coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4'
+          }
+          EOF
 
           rm -rf /tmp/temp_android
 

@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/theme/app_theme.dart';
 import 'data/local/isar_database.dart';
+import 'features/debug_logger/screens/debug_logger_screen.dart';
+import 'features/download_queue/providers/download_queue_provider.dart';
+import 'features/download_queue/screens/queue_screen.dart';
+import 'features/library/screens/library_screen.dart';
+import 'features/player/widgets/mini_player.dart';
+import 'features/search/screens/search_screen.dart';
+import 'features/settings/screens/settings_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,11 +25,11 @@ Future<void> main() async {
     ),
   );
 
-  // Initialize Isar Database
+  // Initialize local Isar database
   try {
     await IsarDatabase.instance.init();
   } catch (exc) {
-    debugPrint('Database initialization notice: $exc');
+    debugPrint('Database initialization warning: $exc');
   }
 
   runApp(
@@ -41,135 +48,131 @@ class MediaDownloaderApp extends StatelessWidget {
       title: 'MP3 Downloader+',
       theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
-      home: const InitialHomeScreen(),
+      home: const MainShellScreen(),
     );
   }
 }
 
-class InitialHomeScreen extends ConsumerStatefulWidget {
-  const InitialHomeScreen({super.key});
+class MainShellScreen extends ConsumerStatefulWidget {
+  const MainShellScreen({super.key});
 
   @override
-  ConsumerState<InitialHomeScreen> createState() => _InitialHomeScreenState();
+  ConsumerState<MainShellScreen> createState() => _MainShellScreenState();
 }
 
-class _InitialHomeScreenState extends ConsumerState<InitialHomeScreen> {
-  int _tapCount = 0;
+class _MainShellScreenState extends ConsumerState<MainShellScreen> {
+  int _currentIndex = 0;
+  int _logoTapCount = 0;
+
+  final List<Widget> _screens = const [
+    SearchScreen(),
+    QueueScreen(),
+    LibraryScreen(),
+    SettingsScreen(),
+  ];
 
   void _onLogoTapped() {
     setState(() {
-      _tapCount++;
+      _logoTapCount++;
     });
 
-    if (_tapCount >= 5) {
-      _tapCount = 0;
+    if (_logoTapCount >= 5) {
+      _logoTapCount = 0;
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Secret Debug Logger: Enabled (5 taps triggered)'),
-          backgroundColor: AppTheme.neonGreen,
-        ),
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const DebugLoggerScreen()),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final queueState = ref.watch(downloadQueueProvider);
+    final pendingCount = queueState.pendingTasks.length;
+
     return Scaffold(
       appBar: AppBar(
         title: GestureDetector(
           onTap: _onLogoTapped,
-          child: const Row(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.music_note, color: AppTheme.neonGreen),
-              SizedBox(width: 8),
-              Text('MP3 Downloader+'),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppTheme.neonGreen.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.music_note,
+                  color: AppTheme.neonGreen,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'MP3 Downloader+',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
             ],
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: 'Nhật ký lỗi (5 lần chạm)',
             onPressed: () {
-              if (!mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Settings opened')),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DebugLoggerScreen()),
               );
             },
           ),
         ],
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.surfaceDark,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.neonGreen.withOpacity(0.3),
-                      blurRadius: 16,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.album,
-                  size: 48,
-                  color: AppTheme.neonGreen,
-                ),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Persistent Mini Player fixed right above bottom navigation bar
+          const MiniPlayer(),
+          BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.search),
+                label: 'Tìm kiếm',
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'MP3 Downloader & Offline Player',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimary,
+              BottomNavigationBarItem(
+                icon: Badge(
+                  isLabelVisible: pendingCount > 0,
+                  label: Text('$pendingCount'),
+                  backgroundColor: AppTheme.neonGreen,
+                  textColor: AppTheme.pureBlack,
+                  child: const Icon(Icons.download),
                 ),
+                label: 'Hàng đợi',
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Production Architecture: Flutter 3.x + Isar DB + FastAPI yt-dlp/FFmpeg Engine',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.library_music),
+                label: 'Thư viện',
               ),
-              const SizedBox(height: 32),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.surfaceDark,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.neonGreen.withOpacity(0.3)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.check_circle, color: AppTheme.neonGreen, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Chặng 2: Foundation & Data Contract Complete',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.settings),
+                label: 'Cài đặt',
               ),
             ],
           ),
-        ),
+        ],
       ),
     );
   }

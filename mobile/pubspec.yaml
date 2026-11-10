@@ -33,7 +33,7 @@ dependencies:
   audio_service: ^0.18.12
 
   # Equalizer & Audio FX
-  equalizer_flutter: ^0.0.8
+  equalizer_flutter: 0.0.1
 
   # Screen & CPU Keep-Alive during background downloads
   wakelock_plus: ^1.2.0

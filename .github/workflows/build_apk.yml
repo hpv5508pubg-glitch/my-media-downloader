@@ -31,7 +31,7 @@ jobs:
 
       - name: 📦 Install Flutter Dependencies
         working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get --verbose
 
       - name: ⚙️ Generate Code (Isar Database & JSON Schemas)
         working-directory: mobile

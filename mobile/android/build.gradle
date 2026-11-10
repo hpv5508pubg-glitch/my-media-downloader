@@ -6,6 +6,25 @@ allprojects {
 }
 
 rootProject.buildDir = '../build'
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                if (namespace == null) {
+                    if (project.name == 'equalizer_flutter') {
+                        namespace 'com.equalizer.flutter.equalizer_flutter'
+                    } else if (project.group && !project.group.toString().isEmpty()) {
+                        namespace project.group
+                    } else {
+                        namespace "com.example.${project.name.replace('-', '_')}"
+                    }
+                }
+            }
+        }
+    }
+}
+
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }

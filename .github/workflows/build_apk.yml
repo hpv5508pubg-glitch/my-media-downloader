@@ -39,7 +39,7 @@ jobs:
 
       - name: 🔨 Build Release APK
         working-directory: mobile
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose
 
       - name: 📤 Upload Release APK to Artifacts
         uses: actions/upload-artifact@v4

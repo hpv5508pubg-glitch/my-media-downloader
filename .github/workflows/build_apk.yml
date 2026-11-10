@@ -7,6 +7,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build Flutter APK
@@ -29,17 +32,45 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: 🛠️ Restore Android Gradle Wrapper
+      - name: 🛠️ Bootstrap Official Flutter Android Project
         working-directory: mobile
         run: |
-          flutter create /tmp/temp_android --platforms=android --org=com.example.app
-          cp /tmp/temp_android/android/gradlew android/gradlew
+          # 1. Back up custom native files
+          mkdir -p /tmp/saved_android
+          cp android/app/src/main/AndroidManifest.xml /tmp/saved_android/
+          cp -r android/app/src/main/res /tmp/saved_android/
+          cp -r android/app/src/main/kotlin /tmp/saved_android/
+
+          # 2. Re-create android platform with Flutter's official matching configuration
+          rm -rf android
+          flutter create . --platforms=android --org=com.example.app
+
+          # 3. Restore custom AndroidManifest, icons, and MainActivity
+          cp /tmp/saved_android/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          cp -r /tmp/saved_android/res/* android/app/src/main/res/
+          cp -r /tmp/saved_android/kotlin/* android/app/src/main/kotlin/
+
+          # 4. Patch android/app/build.gradle for desugaring, multiDex and minSdk
+          python3 -c "
+          import re
+          path = 'android/app/build.gradle'
+          with open(path, 'r') as f:
+              c = f.read()
+          # Set minSdk to 24 for modern media & audio libraries
+          c = re.sub(r'minSdkVersion\s*=?[^\n]+', 'minSdkVersion 24', c)
+          c = re.sub(r'minSdk\s*=\s*[^\n]+', 'minSdk = 24', c)
+          if 'multiDexEnabled' not in c:
+              c = c.replace('defaultConfig {', 'defaultConfig {\n        multiDexEnabled true')
+          if 'coreLibraryDesugaringEnabled' not in c:
+              c = c.replace('compileOptions {', 'compileOptions {\n        coreLibraryDesugaringEnabled true')
+          if 'dependencies {' in c:
+              c = c.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring \"com.android.tools:desugar_jdk_libs:2.0.4\"')
+          else:
+              c += '\ndependencies {\n    coreLibraryDesugaring \"com.android.tools:desugar_jdk_libs:2.0.4\"\n}\n'
+          with open(path, 'w') as f:
+              f.write(c)
+          "
           chmod +x android/gradlew
-          cp /tmp/temp_android/android/gradlew.bat android/gradlew.bat
-          mkdir -p android/gradle/wrapper
-          cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar
-          cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.properties android/gradle/wrapper/gradle-wrapper.properties
-          rm -rf /tmp/temp_android
 
       - name: 📦 Install Flutter Dependencies
         working-directory: mobile
@@ -53,13 +84,18 @@ jobs:
         working-directory: mobile
         run: |
           set -o pipefail
-          flutter build apk --release --verbose 2>&1 | tee build.log || {
-            echo "### ❌ Build Failure Log (Last 100 lines)" >> $GITHUB_STEP_SUMMARY
-            echo '```text' >> $GITHUB_STEP_SUMMARY
-            tail -n 100 build.log >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            exit 1
-          }
+          flutter build apk --release --verbose 2>&1 | tee build.log
+
+      - name: 📝 Push failure log to git
+        if: failure()
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git checkout -B build-log
+          tail -n 250 mobile/build.log > build_error.txt
+          git add build_error.txt
+          git commit -m "Build error log"
+          git push -f origin build-log
 
       - name: 📄 Upload Build Log on Failure
         if: failure()

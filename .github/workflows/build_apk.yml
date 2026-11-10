@@ -29,11 +29,17 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: 🛠️ Generate Gradle Wrapper Executables
-        working-directory: mobile/android
+      - name: 🛠️ Restore Android Gradle Wrapper
+        working-directory: mobile
         run: |
-          gradle wrapper --gradle-version 8.4
-          chmod +x gradlew
+          flutter create /tmp/temp_android --platforms=android --org=com.example.app
+          cp /tmp/temp_android/android/gradlew android/gradlew
+          chmod +x android/gradlew
+          cp /tmp/temp_android/android/gradlew.bat android/gradlew.bat
+          mkdir -p android/gradle/wrapper
+          cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar
+          cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.properties android/gradle/wrapper/gradle-wrapper.properties
+          rm -rf /tmp/temp_android
 
       - name: 📦 Install Flutter Dependencies
         working-directory: mobile

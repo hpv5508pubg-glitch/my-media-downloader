@@ -38,7 +38,6 @@ jobs:
           cp /tmp/temp_android/android/gradlew.bat android/gradlew.bat
           mkdir -p android/gradle/wrapper
           cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.jar android/gradle/wrapper/gradle-wrapper.jar
-          cp /tmp/temp_android/android/gradle/wrapper/gradle-wrapper.properties android/gradle/wrapper/gradle-wrapper.properties
           rm -rf /tmp/temp_android
 
       - name: 📦 Install Flutter Dependencies

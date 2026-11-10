@@ -1,6 +1,6 @@
 class AppConstants {
   // Network defaults
-  static const String defaultBaseUrl = 'http://10.0.2.2:7860';
+  static const String defaultBaseUrl = 'https://iamsaygoodbye-my-media-server.hf.space';
   static const String defaultApiKey = 'Haphuocvinhdz25082009@';
   static const Duration requestTimeout = Duration(seconds: 60);
   static const int maxRetryAttempts = 5;

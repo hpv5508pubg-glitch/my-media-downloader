@@ -7,10 +7,17 @@ import '../constants/app_constants.dart';
 import 'api_interceptors.dart';
 
 class ApiClient {
+  static final ApiClient instance = ApiClient._internal();
+  factory ApiClient({String? baseUrl, String? apiKey}) {
+    if (baseUrl != null) instance.updateBaseUrl(baseUrl);
+    if (apiKey != null) instance.updateApiKey(apiKey);
+    return instance;
+  }
+
   late final Dio _dio;
   late final ApiKeyInterceptor _apiKeyInterceptor;
 
-  ApiClient({
+  ApiClient._internal({
     String? baseUrl,
     String? apiKey,
   }) {
